@@ -23,24 +23,6 @@ function mockTweetsResponse(tweets: Tweet[]) {
   };
 }
 
-function mockPostResponse(tweet: Tweet) {
-  return {
-    json: vi.fn().mockResolvedValue(tweet),
-    ok: true,
-    status: 201,
-    statusText: 'Created',
-  };
-}
-
-function mockErrorResponse(error: string, status = 400) {
-  return {
-    json: vi.fn().mockResolvedValue({ error }),
-    ok: false,
-    status,
-    statusText: 'Bad Request',
-  };
-}
-
 describe('Twitter Clone App', () => {
   beforeEach(() => {
     vi.clearAllMocks();
