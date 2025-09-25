@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import path from 'path';
 import { existsSync } from 'fs';
+import { randomUUID } from 'crypto';
 
 export const app = express();
 export const PORT = process.env.PORT || 5000;
@@ -30,8 +31,8 @@ app.get('/api', (req: Request, res: Response) => {
 
 // Get all tweets
 app.get('/api/tweets', (req: Request, res: Response) => {
-  // Return tweets sorted by newest first
-  const sortedTweets = tweets.sort(
+  // Return tweets sorted by newest first (non-mutating sort)
+  const sortedTweets = [...tweets].sort(
     (a, b) => b.timestamp.getTime() - a.timestamp.getTime()
   );
   res.json(sortedTweets);
@@ -41,20 +42,24 @@ app.get('/api/tweets', (req: Request, res: Response) => {
 app.post('/api/tweets', (req: Request, res: Response) => {
   const { content, author } = req.body;
 
-  if (!content || !author) {
+  // Trim values first, then validate
+  const contentTrimmed = (content ?? '').trim();
+  const authorTrimmed = (author ?? '').trim();
+
+  if (!contentTrimmed || !authorTrimmed) {
     return res.status(400).json({ error: 'Content and author are required' });
   }
 
-  if (content.length > 280) {
+  if (contentTrimmed.length > 280) {
     return res
       .status(400)
       .json({ error: 'Tweet content cannot exceed 280 characters' });
   }
 
   const newTweet: Tweet = {
-    id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-    content: content.trim(),
-    author: author.trim(),
+    id: randomUUID(),
+    content: contentTrimmed,
+    author: authorTrimmed,
     timestamp: new Date(),
   };
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 
 interface Tweet {
   id: string;
@@ -23,6 +23,7 @@ function App() {
       }
       const data = await response.json();
       setTweets(data);
+      setError(null); // Clear any previous errors on successful fetch
     } catch (err) {
       console.error('Error fetching tweets:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch tweets');
@@ -30,7 +31,7 @@ function App() {
   };
 
   // Post a new tweet
-  const postTweet = async (e: React.FormEvent) => {
+  const postTweet = async (e: FormEvent) => {
     e.preventDefault();
 
     if (!newTweet.trim() || !author.trim()) {
