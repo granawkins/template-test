@@ -7,6 +7,17 @@ export const app = express();
 export const PORT = process.env.PORT || 5000;
 export const CLIENT_DIST_PATH = path.join(__dirname, '../../client/dist');
 
+// Tweet interface
+interface Tweet {
+  id: string;
+  content: string;
+  author: string;
+  timestamp: Date;
+}
+
+// In-memory storage for tweets
+const tweets: Tweet[] = [];
+
 // Middleware
 app.use(cors()); // Enable CORS for frontend communication
 app.use(express.json()); // Parse JSON bodies
@@ -14,7 +25,42 @@ app.use(express.static(CLIENT_DIST_PATH)); // Serve static files from client/dis
 
 // Basic route
 app.get('/api', (req: Request, res: Response) => {
-  res.json({ message: 'Welcome to the Mentat API!' });
+  res.json({ message: 'Welcome to the Twitter Clone API!' });
+});
+
+// Get all tweets
+app.get('/api/tweets', (req: Request, res: Response) => {
+  // Return tweets sorted by newest first
+  const sortedTweets = tweets.sort(
+    (a, b) => b.timestamp.getTime() - a.timestamp.getTime()
+  );
+  res.json(sortedTweets);
+});
+
+// Post a new tweet
+app.post('/api/tweets', (req: Request, res: Response) => {
+  const { content, author } = req.body;
+
+  if (!content || !author) {
+    return res.status(400).json({ error: 'Content and author are required' });
+  }
+
+  if (content.length > 280) {
+    return res
+      .status(400)
+      .json({ error: 'Tweet content cannot exceed 280 characters' });
+  }
+
+  const newTweet: Tweet = {
+    id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+    content: content.trim(),
+    author: author.trim(),
+    timestamp: new Date(),
+  };
+
+  tweets.push(newTweet);
+
+  res.status(201).json(newTweet);
 });
 
 // Serve React app or fallback page
