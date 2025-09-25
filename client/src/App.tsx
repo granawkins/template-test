@@ -17,32 +17,42 @@ function App() {
   // Fetch tweets from the server
   const fetchTweets = async () => {
     try {
+      console.log('📥 Fetching tweets from /api/tweets');
       const response = await fetch('/api/tweets');
+      console.log('📥 Fetch response:', response.status, response.statusText);
       if (!response.ok) {
         throw new Error(`HTTP error ${response.status}`);
       }
       const data = await response.json();
+      console.log('📥 Tweets received:', data.length, 'tweets');
       setTweets(data);
       setError(null); // Clear any previous errors on successful fetch
     } catch (err) {
-      console.error('Error fetching tweets:', err);
+      console.error('❌ Error fetching tweets:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch tweets');
     }
   };
 
   // Post a new tweet
   const postTweet = async (e: FormEvent) => {
+    console.log('🐦 Form submitted!', { newTweet, author });
     e.preventDefault();
 
     if (!newTweet.trim() || !author.trim()) {
+      console.log('❌ Validation failed:', {
+        newTweetTrimmed: newTweet.trim(),
+        authorTrimmed: author.trim(),
+      });
       setError('Both author and tweet content are required');
       return;
     }
 
+    console.log('✅ Validation passed, making POST request...');
     setLoading(true);
     setError(null);
 
     try {
+      console.log('📡 Making fetch request to /api/tweets');
       const response = await fetch('/api/tweets', {
         method: 'POST',
         headers: {
@@ -54,15 +64,26 @@ function App() {
         }),
       });
 
+      console.log(
+        '📡 Response received:',
+        response.status,
+        response.statusText
+      );
+
       if (!response.ok) {
         const errorData = await response.json();
+        console.log('❌ Server error:', errorData);
         throw new Error(errorData.error || 'Failed to post tweet');
       }
 
+      const newTweetData = await response.json();
+      console.log('✅ Tweet posted successfully:', newTweetData);
+
       setNewTweet('');
-      fetchTweets(); // Refresh tweets after posting
+      await fetchTweets(); // Refresh tweets after posting
+      console.log('✅ Tweets refreshed');
     } catch (err) {
-      console.error('Error posting tweet:', err);
+      console.error('❌ Error posting tweet:', err);
       setError(err instanceof Error ? err.message : 'Failed to post tweet');
     } finally {
       setLoading(false);
