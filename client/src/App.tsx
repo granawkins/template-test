@@ -106,6 +106,19 @@ function App() {
 
   // Fetch tweets on component mount and set up polling
   useEffect(() => {
+    // Log API endpoint info on mount for debugging
+    if (import.meta.env.DEV) {
+      const tweetsUrl = '/api/tweets';
+      const fullUrl = `${window.location.origin}${tweetsUrl}`;
+      console.log('🐦 Twitter Clone Debug Info:');
+      console.log('📡 GET tweets from:', tweetsUrl, '→', fullUrl);
+      console.log('📡 POST tweets to:', tweetsUrl, '→', fullUrl);
+      console.log('📡 Vite proxy forwards /api to http://localhost:5000');
+      console.log(
+        '📡 Fill both name and tweet fields to enable the Tweet button'
+      );
+    }
+
     fetchTweets();
 
     // Poll for new tweets every 3 seconds
