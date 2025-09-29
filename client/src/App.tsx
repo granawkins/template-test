@@ -56,6 +56,11 @@ function App() {
       const fullUrl = `${window.location.origin}${url}`;
       console.log('📡 Making fetch request to:', url);
       console.log('📡 Full URL will be:', fullUrl);
+      if (import.meta.env.DEV) {
+        console.log(
+          '📡 Dev note: Vite proxy forwards /api to http://localhost:5000 (see client/vite.config.ts)'
+        );
+      }
       const response = await fetch(url, {
         method: 'POST',
         headers: {
