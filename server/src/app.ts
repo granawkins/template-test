@@ -31,26 +31,48 @@ app.get('/api', (req: Request, res: Response) => {
 
 // Get all tweets
 app.get('/api/tweets', (req: Request, res: Response) => {
+  console.log('📥 GET /api/tweets - Fetching tweets, count:', tweets.length);
+
   // Return tweets sorted by newest first (non-mutating sort)
   const sortedTweets = [...tweets].sort(
     (a, b) => b.timestamp.getTime() - a.timestamp.getTime()
   );
+
+  console.log('📤 GET /api/tweets - Returning', sortedTweets.length, 'tweets');
   res.json(sortedTweets);
 });
 
 // Post a new tweet
 app.post('/api/tweets', (req: Request, res: Response) => {
+  console.log('📨 POST /api/tweets - Received tweet request');
+  console.log('📨 Request body:', JSON.stringify(req.body, null, 2));
+
   const { content, author } = req.body;
 
   // Trim values first, then validate
   const contentTrimmed = (content ?? '').trim();
   const authorTrimmed = (author ?? '').trim();
 
+  console.log(
+    '📨 After trimming - content:',
+    `"${contentTrimmed}"`,
+    'author:',
+    `"${authorTrimmed}"`
+  );
+
   if (!contentTrimmed || !authorTrimmed) {
+    console.log(
+      '❌ POST /api/tweets - Validation failed: missing content or author'
+    );
     return res.status(400).json({ error: 'Content and author are required' });
   }
 
   if (contentTrimmed.length > 280) {
+    console.log(
+      '❌ POST /api/tweets - Validation failed: content too long (',
+      contentTrimmed.length,
+      'chars)'
+    );
     return res
       .status(400)
       .json({ error: 'Tweet content cannot exceed 280 characters' });
@@ -64,6 +86,10 @@ app.post('/api/tweets', (req: Request, res: Response) => {
   };
 
   tweets.push(newTweet);
+
+  console.log('✅ POST /api/tweets - Tweet created successfully');
+  console.log('✅ New tweet:', JSON.stringify(newTweet, null, 2));
+  console.log('✅ Total tweets now:', tweets.length);
 
   res.status(201).json(newTweet);
 });
