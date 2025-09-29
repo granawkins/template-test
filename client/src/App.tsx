@@ -1,150 +1,335 @@
-import { useState, useEffect } from 'react';
-import mentatLogo from '/mentat.png';
+import { useState, useEffect, type FormEvent } from 'react';
+
+interface Tweet {
+  id: string;
+  content: string;
+  author: string;
+  timestamp: string;
+}
 
 function App() {
-  const [message, setMessage] = useState<string | null>(null);
+  const [tweets, setTweets] = useState<Tweet[]>([]);
+  const [newTweet, setNewTweet] = useState('');
+  const [author, setAuthor] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchBackendMessage = async () => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const response = await fetch('/api');
-
-        if (!response.ok) {
-          throw new Error(`HTTP error ${response.status}`);
-        }
-
-        const data = await response.json();
-        setMessage(data.message);
-      } catch (err) {
-        console.error('Error fetching data:', err);
-        setError(
-          err instanceof Error ? err.message : 'An unknown error occurred'
-        );
-      } finally {
-        setLoading(false);
+  // Fetch tweets from the server
+  const fetchTweets = async () => {
+    try {
+      console.log('📥 Fetching tweets from /api/tweets');
+      const response = await fetch('/api/tweets');
+      console.log('📥 Fetch response:', response.status, response.statusText);
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}`);
       }
-    };
+      const data = await response.json();
+      console.log('📥 Tweets received:', data.length, 'tweets');
+      setTweets(data);
+      setError(null); // Clear any previous errors on successful fetch
+    } catch (err) {
+      console.error('❌ Error fetching tweets:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch tweets');
+    }
+  };
 
-    fetchBackendMessage();
+  // Post a new tweet
+  const postTweet = async (e: FormEvent) => {
+    console.log('🐦 Form submitted!', { newTweet, author });
+    e.preventDefault();
+
+    if (!newTweet.trim() || !author.trim()) {
+      console.log('❌ Validation failed:', {
+        newTweetTrimmed: newTweet.trim(),
+        authorTrimmed: author.trim(),
+      });
+      setError('Both author and tweet content are required');
+      return;
+    }
+
+    console.log('✅ Validation passed, making POST request...');
+    setLoading(true);
+    setError(null);
+
+    try {
+      const url = '/api/tweets';
+      const fullUrl = `${window.location.origin}${url}`;
+      console.log('📡 Making fetch request to:', url);
+      console.log('📡 Full URL will be:', fullUrl);
+      if (import.meta.env.DEV) {
+        console.log(
+          '📡 Dev note: Vite proxy forwards /api to http://localhost:5000 (see client/vite.config.ts)'
+        );
+      }
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: newTweet,
+          author: author,
+        }),
+      });
+
+      console.log(
+        '📡 Response received:',
+        response.status,
+        response.statusText
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.log('❌ Server error:', errorData);
+        throw new Error(errorData.error || 'Failed to post tweet');
+      }
+
+      const newTweetData = await response.json();
+      console.log('✅ Tweet posted successfully:', newTweetData);
+
+      setNewTweet('');
+      await fetchTweets(); // Refresh tweets after posting
+      console.log('✅ Tweets refreshed');
+    } catch (err) {
+      console.error('❌ Error posting tweet:', err);
+      setError(err instanceof Error ? err.message : 'Failed to post tweet');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Format timestamp
+  const formatTimestamp = (timestamp: string) => {
+    const date = new Date(timestamp);
+    return date.toLocaleString();
+  };
+
+  // Fetch tweets on component mount and set up polling
+  useEffect(() => {
+    // Log API endpoint info on mount for debugging
+    if (import.meta.env.DEV) {
+      const tweetsUrl = '/api/tweets';
+      const fullUrl = `${window.location.origin}${tweetsUrl}`;
+      console.log('🐦 Twitter Clone Debug Info:');
+      console.log('📡 GET tweets from:', tweetsUrl, '→', fullUrl);
+      console.log('📡 POST tweets to:', tweetsUrl, '→', fullUrl);
+      console.log('📡 Vite proxy forwards /api to http://localhost:5000');
+      console.log(
+        '📡 Fill both name and tweet fields to enable the Tweet button'
+      );
+    }
+
+    fetchTweets();
+
+    // Poll for new tweets every 3 seconds
+    const interval = setInterval(fetchTweets, 3000);
+
+    return () => clearInterval(interval);
   }, []);
 
   return (
     <div
       style={{
-        backgroundColor: '#fafafa',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        height: '100vh',
-        width: '100vw',
-        justifyContent: 'center',
-        padding: '20px',
+        backgroundColor: '#f0f2f5',
+        minHeight: '100vh',
         fontFamily:
           '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       }}
     >
-      {/* Logo */}
-      <div>
-        <a href="https://mentat.ai" target="_blank">
-          <img src={mentatLogo} alt="Mentat Logo" />
-        </a>
-      </div>
-
-      {/* Main content */}
       <div
-        className="paper"
         style={{
-          maxWidth: '500px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '24px',
+          maxWidth: '600px',
+          margin: '0 auto',
+          padding: '20px',
         }}
       >
-        <h1>Mentat Template JS</h1>
-
-        {/* Tech stack */}
+        {/* Header */}
         <div
           style={{
-            display: 'flex',
-            flexDirection: 'row',
-            gap: '12px',
-            marginBottom: '24px',
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            padding: '20px',
+            marginBottom: '20px',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
           }}
         >
-          {[
-            ['Frontend', 'React, Vite, Vitest'],
-            ['Backend', 'Node.js, Express, Jest'],
-            ['Utilities', 'TypeScript, ESLint, Prettier'],
-          ].map(([title, techs]) => (
-            <div className="section" style={{ textAlign: 'center' }} key={title}>
+          <h1
+            style={{
+              margin: '0 0 20px 0',
+              color: '#1da1f2',
+              fontSize: '28px',
+              fontWeight: 'bold',
+              textAlign: 'center',
+            }}
+          >
+            🐦 Twitter Clone
+          </h1>
+
+          {/* Tweet Form */}
+          <form onSubmit={postTweet}>
+            <div style={{ marginBottom: '12px' }}>
+              <input
+                type="text"
+                placeholder="Your name"
+                value={author}
+                onChange={(e) => setAuthor(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #e1e8ed',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+            <div style={{ marginBottom: '12px' }}>
+              <textarea
+                placeholder="What's happening?"
+                value={newTweet}
+                onChange={(e) => setNewTweet(e.target.value)}
+                maxLength={280}
+                rows={3}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #e1e8ed',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  resize: 'vertical',
+                  boxSizing: 'border-box',
+                }}
+              />
               <div
                 style={{
-                  fontWeight: '500',
-                  fontSize: '14px',
-                  color: '#1f2937',
-                  marginBottom: '4px',
+                  textAlign: 'right',
+                  fontSize: '12px',
+                  color: '#657786',
+                  marginTop: '4px',
                 }}
               >
-                {title}
+                {newTweet.length}/280
               </div>
-              <div style={{ fontSize: '12px', color: '#6b7280' }}>{techs}</div>
             </div>
-          ))}
+            <button
+              type="submit"
+              disabled={loading || !newTweet.trim() || !author.trim()}
+              style={{
+                backgroundColor: '#1da1f2',
+                color: 'white',
+                border: 'none',
+                borderRadius: '20px',
+                padding: '10px 20px',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                opacity:
+                  loading || !newTweet.trim() || !author.trim() ? 0.5 : 1,
+              }}
+            >
+              {loading ? 'Tweeting...' : 'Tweet'}
+            </button>
+          </form>
+
+          {error && (
+            <div
+              style={{
+                marginTop: '12px',
+                padding: '12px',
+                backgroundColor: '#ffebee',
+                color: '#c62828',
+                borderRadius: '8px',
+                fontSize: '14px',
+              }}
+            >
+              {error}
+            </div>
+          )}
         </div>
 
-        {/* Server message */}
-        <div className="section">
-          <div
-            style={{
-              fontSize: '14px',
-              fontWeight: '500',
-              color: '#1f2937',
-              marginBottom: '8px',
-            }}
-          >
-            Message from server:
-          </div>
-          <div style={{ fontSize: '14px', color: '#1f2937' }}>
-            {loading ? (
-              'Loading message from server...'
-            ) : error ? (
-              <span style={{ color: '#dc2626' }}>Error: {error}</span>
-            ) : message ? (
-              message
-            ) : (
-              <span style={{ color: '#6b7280', fontStyle: 'italic' }}>
-                No message from server
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Call to action */}
-        <div
-          style={{
-            textAlign: 'center',
-            fontSize: '14px',
-            color: '#6b7280',
-          }}
-        >
-          Create a new GitHub issue and tag{' '}
-          <code
-            style={{
-              backgroundColor: '#f8fafc',
-              padding: '2px 6px',
-              borderRadius: '4px',
-              fontSize: '13px',
-              color: '#1f2937',
-            }}
-          >
-            @MentatBot
-          </code>{' '}
-          to get started.
+        {/* Tweet Feed */}
+        <div>
+          {tweets.length === 0 ? (
+            <div
+              style={{
+                backgroundColor: 'white',
+                borderRadius: '12px',
+                padding: '40px',
+                textAlign: 'center',
+                color: '#657786',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+              }}
+            >
+              No tweets yet. Be the first to tweet!
+            </div>
+          ) : (
+            tweets.map((tweet) => (
+              <div
+                key={tweet.id}
+                style={{
+                  backgroundColor: 'white',
+                  borderRadius: '12px',
+                  padding: '20px',
+                  marginBottom: '12px',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    marginBottom: '8px',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '50%',
+                      backgroundColor: '#1da1f2',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontWeight: 'bold',
+                      marginRight: '12px',
+                    }}
+                  >
+                    {tweet.author.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <div
+                      style={{
+                        fontWeight: 'bold',
+                        color: '#14171a',
+                        fontSize: '16px',
+                      }}
+                    >
+                      {tweet.author}
+                    </div>
+                    <div
+                      style={{
+                        color: '#657786',
+                        fontSize: '14px',
+                      }}
+                    >
+                      {formatTimestamp(tweet.timestamp)}
+                    </div>
+                  </div>
+                </div>
+                <div
+                  style={{
+                    color: '#14171a',
+                    fontSize: '16px',
+                    lineHeight: '1.4',
+                    marginLeft: '52px',
+                  }}
+                >
+                  {tweet.content}
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

@@ -1,66 +1,125 @@
 import { describe, it, expect, vi, beforeEach, Mock } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent } from '@testing-library/react';
 import App from '../App';
 
 // Define types
-type ApiResponse = {
-  message: string;
-};
+interface Tweet {
+  id: string;
+  content: string;
+  author: string;
+  timestamp: string;
+}
 
 // Mock the fetch API
 globalThis.fetch = vi.fn() as unknown as typeof fetch;
 
-function mockFetchResponse(data: ApiResponse) {
+function mockTweetsResponse(tweets: Tweet[]) {
   return {
-    json: vi.fn().mockResolvedValue(data),
+    json: vi.fn().mockResolvedValue(tweets),
     ok: true,
+    status: 200,
+    statusText: 'OK',
   };
 }
 
-describe('App Component', () => {
+describe('Twitter Clone App', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Default mock implementation
+    // Default mock: empty tweets array
     (globalThis.fetch as unknown as Mock).mockResolvedValue(
-      mockFetchResponse({ message: 'Test Message from API' })
+      mockTweetsResponse([])
     );
   });
 
-  it('renders App component correctly', () => {
+  it('renders Twitter clone UI correctly', () => {
     render(<App />);
-    expect(screen.getByText('Mentat Template JS')).toBeInTheDocument();
-    expect(screen.getByText(/Frontend: React, Vite/)).toBeInTheDocument();
-    expect(screen.getByText(/Backend: Node.js, Express/)).toBeInTheDocument();
+
+    // Check for main elements
+    expect(screen.getByText('🐦 Twitter Clone')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Your name')).toBeInTheDocument();
     expect(
-      screen.getByText(/Utilities: Typescript, ESLint, Prettier/)
+      screen.getByPlaceholderText("What's happening?")
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /tweet/i })).toBeInTheDocument();
+    expect(
+      screen.getByText('No tweets yet. Be the first to tweet!')
     ).toBeInTheDocument();
   });
 
-  it('loads and displays API message', async () => {
-    render(<App />);
+  it('fetches and displays tweets on load', async () => {
+    const mockTweets: Tweet[] = [
+      {
+        id: '1',
+        content: 'Test tweet content',
+        author: 'Test Author',
+        timestamp: '2023-01-01T00:00:00.000Z',
+      },
+    ];
 
-    // Should initially show loading message
-    expect(screen.getByText(/Loading message from server/)).toBeInTheDocument();
-
-    // Wait for the fetch to resolve and check if the message is displayed
-    await waitFor(() => {
-      expect(screen.getByText('Test Message from API')).toBeInTheDocument();
-    });
-
-    expect(globalThis.fetch).toHaveBeenCalledWith('/api');
-  });
-
-  it('handles API error', async () => {
-    // Mock a failed API call
-    (globalThis.fetch as unknown as Mock).mockRejectedValue(
-      new Error('API Error')
+    (globalThis.fetch as unknown as Mock).mockResolvedValue(
+      mockTweetsResponse(mockTweets)
     );
 
     render(<App />);
 
-    // Wait for the error message to appear
+    // Wait for tweets to load
     await waitFor(() => {
-      expect(screen.getByText(/Error: API Error/)).toBeInTheDocument();
+      expect(screen.getByText('Test tweet content')).toBeInTheDocument();
+      expect(screen.getByText('Test Author')).toBeInTheDocument();
+    });
+
+    expect(globalThis.fetch).toHaveBeenCalledWith('/api/tweets');
+  });
+
+  it('handles tweet fetch error', async () => {
+    (globalThis.fetch as unknown as Mock).mockRejectedValue(
+      new Error('Failed to fetch tweets')
+    );
+
+    render(<App />);
+
+    // Wait for error message to appear
+    await waitFor(() => {
+      expect(screen.getByText(/Failed to fetch tweets/)).toBeInTheDocument();
+    });
+  });
+
+  it('disables submit button when fields are empty', () => {
+    render(<App />);
+
+    const submitButton = screen.getByRole('button', { name: /tweet/i });
+    expect(submitButton).toBeDisabled();
+  });
+
+  it('enables submit button when both fields are filled', async () => {
+    render(<App />);
+
+    const nameInput = screen.getByPlaceholderText('Your name');
+    const contentInput = screen.getByPlaceholderText("What's happening?");
+    const submitButton = screen.getByRole('button', { name: /tweet/i });
+
+    fireEvent.change(nameInput, { target: { value: 'Test User' } });
+    fireEvent.change(contentInput, { target: { value: 'Test tweet' } });
+
+    await waitFor(() => {
+      expect(submitButton).not.toBeDisabled();
+    });
+  });
+
+  it('shows character count', async () => {
+    render(<App />);
+
+    const contentInput = screen.getByPlaceholderText("What's happening?");
+
+    // Initially shows 0/280
+    expect(screen.getByText('0/280')).toBeInTheDocument();
+
+    // Update content and check count
+    fireEvent.change(contentInput, { target: { value: 'Hello' } });
+
+    await waitFor(() => {
+      expect(screen.getByText('5/280')).toBeInTheDocument();
     });
   });
 });
