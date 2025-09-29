@@ -52,8 +52,11 @@ function App() {
     setError(null);
 
     try {
-      console.log('📡 Making fetch request to /api/tweets');
-      const response = await fetch('/api/tweets', {
+      const url = '/api/tweets';
+      const fullUrl = `${window.location.origin}${url}`;
+      console.log('📡 Making fetch request to:', url);
+      console.log('📡 Full URL will be:', fullUrl);
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
